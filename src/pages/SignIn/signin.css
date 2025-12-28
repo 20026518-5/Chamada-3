@@ -85,3 +85,10 @@ form button:hover{
     width: 330px;
   }
 }
+
+button {
+  min-height: 44px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
