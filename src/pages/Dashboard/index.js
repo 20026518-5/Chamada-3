@@ -10,6 +10,7 @@ import { db } from "../../services/firebaseConnection";
 import { format } from "date-fns/esm";
 import Modal from "../../components/Modal";
 import { toast } from "react-toastify";
+import Loading from "../../components/Loading";
 
 
 const listRef = collection(db,'chamados');
@@ -89,26 +90,13 @@ export default  function Dashboard() {
     .catch(()=>toast.error('Ops,erro ao deletar'))
   }
 
- 
-
-  if(loading){
-    return ( 
-      <div >
-      <Header />
-      <div className="content">
-        <Title name='Chamados'>
-          <FiMessageSquare size={25}/> 
-        </Title>
-      
-        <div className="container dashboard" >
-          <span>Buscando Chamados...</span>
-        </div>
-
-
-      </div>
-      </div>
-    )
-  }
+  if (loading) {
+  return (
+    <div className="container dashboard">
+      <Loading size={40} color="#121212" />
+    </div>
+  );
+}
 
   return (
     
@@ -190,7 +178,11 @@ export default  function Dashboard() {
        
       </table>
 
-      {loadMore && <h3>Buscando mais chamados</h3>}
+      {loadMore && (
+        <div style={{ marginTop: 15 }}>
+        <Loading size={20} color="#121212" />
+        </div>
+      )}
       {!isEmpty && !loadMore && 
       <button onClick={handleMore} className='btn-more'>Buscar mais</button>
       }
