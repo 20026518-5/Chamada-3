@@ -2,6 +2,7 @@ import { useContext, useState } from 'react';
 import { Link } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 import { AuthContext } from '../../contexts/auth';
+import { FaSpinner } from "react-icons/fa";
 
 function SignUp() {
   const [email,setEmail] = useState('');
@@ -46,9 +47,13 @@ return (
           onChange={(e)=>setPassword(e.target.value)} 
           placeholder='Senha' 
         />
-        <button type='submit'>
-          {loadingAuth ? 'Carregando...' : 'Cadastrar'}
-          </button>
+        <button type="submit" disabled={loadingAuth}>
+          {loadingAuth ? (
+          <FaSpinner className="loading-spinner" />
+          ) : (
+            "Entrar"
+          )}
+      </button>
       </form>
       <Link to='/'>Já possuo conta!</Link>
     </div>
