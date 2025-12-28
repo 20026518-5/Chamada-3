@@ -8,6 +8,7 @@ import Title from "../../components/Title"
 import { AuthContext } from "../../contexts/auth";
 import { db } from "../../services/firebaseConnection";
 import './new.css';
+import Loading from "../../components/Loading";
 export default function New(){
 
   const {user} = useContext(AuthContext);
@@ -163,26 +164,29 @@ export default function New(){
 
         <form className="form-profile" onSubmit={handleRegister}>
 
-          <label>Cliente:</label>
-          { loadingCustomer ? 
-            (
-              <input type='text' disabled={true} value='Carregando' 
-              />
-            )
-            :
-            (
-              <select value={customerSelected} onChange={handleCustomerSelected}>
-                {customers.map((item,index)=>{
-                  return(
-                  <option key={index} value={index}>
-                    {item.nomeEmpresa}
-                  </option>
-                  )
-                })
-                }
-              </select>
-            )
-        }
+       <label>Cliente:</label>
+{ loadingCustomer ? 
+  (
+    /* Substituição do input estático por um feedback visual dinâmico */
+    <div className="loading-field">
+       <Loading size={15} /> 
+       <span>Buscando empresas cadastradas...</span>
+    </div>
+  )
+  :
+  (
+    <select value={customerSelected} onChange={handleCustomerSelected}>
+      {customers.map((item,index)=>{
+        return(
+        <option key={index} value={index}>
+          {item.nomeEmpresa}
+        </option>
+        )
+      })
+      }
+    </select>
+  )
+}
 
           <label>Assunto:</label>
           <select 
