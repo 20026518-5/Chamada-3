@@ -68,7 +68,6 @@ export default function New(){
 
 const handleRegister = async (e) => {
   e.preventDefault();
-
   try {
     if(editId){
       const docRef = doc(db, 'chamados', id);
@@ -78,7 +77,6 @@ const handleRegister = async (e) => {
         assunto: assunto,
         status: status,
         complemento: complemento,
-        // userId: user.uid,  <-- Remova esta linha para manter o dono original do chamado
       });
       toast.info('Chamado atualizado!');
       navigate('/dashboard');
