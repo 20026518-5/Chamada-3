@@ -37,17 +37,18 @@ function AuthProvider({ children }){
 // Adicione secretaria e departamento aos parâmetros
 async function signUp(name, email, password, secretaria, departamento) {
   setLoadingAuth(true);
+
   try {
     const value = await createUserWithEmailAndPassword(auth, email, password);
     const uid = value.user.uid;
 
-    // Salva no Firestore com os novos campos e define o papel (role)
+    // Grava no Firestore com os novos campos e o papel 'user'
     await setDoc(doc(db, 'users', uid), {
       nome: name,
       avatarUrl: null,
       secretaria: secretaria,
       departamento: departamento,
-      role: 'user' // Define como usuário comum por padrão
+      role: 'user', // Define como usuário comum por padrão
     });
 
     const data = {
@@ -57,7 +58,7 @@ async function signUp(name, email, password, secretaria, departamento) {
       avatarUrl: null,
       secretaria: secretaria,
       departamento: departamento,
-      role: 'user'
+      role: 'user',
     };
 
     setUser(data);
@@ -65,6 +66,7 @@ async function signUp(name, email, password, secretaria, departamento) {
     setLoadingAuth(false);
     toast.success('Cadastrado com sucesso');
     navigate('/dashboard');
+
   } catch (err) {
     console.error('Erro ao cadastrar:', err);
     toast.error('Erro ao cadastrar usuário.');
