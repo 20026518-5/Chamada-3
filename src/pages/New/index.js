@@ -101,32 +101,48 @@ export default function New(){
     console.log(e.target.value);
   }
 
-  const handleRegister = async (e) =>{
-    e.preventDefault();
+  // Exemplo da função handleRegister refatorada:
 
-    if(editId){
-      const docRef = doc(db,'chamados',id);
-      await updateDoc(docRef,{
-        cliente:customers[customerSelected].nomeEmpresa,
-        clienteId:customers[customerSelected].id,
-        assunto:assunto,
-        status:status,
-        complemento:complemento,
-        userId:user.uid,
-      })
-      .then(() =>{
-        toast.info('Chamado atualizado com sucesso!');
-        setComplemento('');
-        setCustomerSelected(0);
-        navigate('/dashboard')
+const handleRegister = async (e) => {
+  e.preventDefault();
 
-      })
-      .catch((error)=>{
-        console.log(error);
-        toast.error('Ops,Erro ao atualizar esse chamado')
-      })
+  try {
+    if (editId) {
+      const docRef = doc(db, 'chamados', id);
+      await updateDoc(docRef, {
+        cliente: customers[customerSelected].nomeEmpresa,
+        clienteId: customers[customerSelected].id,
+        assunto: assunto,
+        status: status,
+        complemento: complemento,
+        userId: user.uid,
+      });
+
+      toast.info('Chamado atualizado com sucesso!');
+      navigate('/dashboard');
       return;
     }
+
+    // Se não for edição, registra novo
+    await addDoc(collection(db, 'chamados'), {
+      created: new Date(),
+      cliente: customers[customerSelected].nomeEmpresa,
+      clienteId: customers[customerSelected].id,
+      assunto: assunto,
+      status: status,
+      complemento: complemento,
+      userId: user.uid,
+    });
+
+    toast.success('Chamado registrado!');
+    setCustomerSelected(0);
+    setComplemento('');
+
+  } catch (error) {
+    console.error('Erro na operação:', error);
+    toast.error('Ops, erro ao processar sua solicitação.');
+  }
+};
     
     await addDoc(collection(db,'chamados'),{
       created:new Date(),
