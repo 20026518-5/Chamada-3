@@ -103,7 +103,7 @@ export default function New(){
 
   // Exemplo da função handleRegister refatorada:
 
-const handleRegister = async (e) => {
+const handleRegister = async (e) => { 
   e.preventDefault();
 
   try {
@@ -117,6 +117,35 @@ const handleRegister = async (e) => {
         complemento: complemento,
         userId: user.uid,
       });
+
+      toast.info('Chamado atualizado com sucesso!');
+      setComplemento('');
+      setCustomerSelected(0);
+      navigate('/dashboard');
+      return;
+    }
+    
+    // Se não for edição, registra um novo chamado
+    // O erro ocorria aqui porque a função pai não era 'async'
+    await addDoc(collection(db, 'chamados'), {
+      created: new Date(),
+      cliente: customers[customerSelected].nomeEmpresa,
+      clienteId: customers[customerSelected].id,
+      assunto: assunto,
+      status: status,
+      complemento: complemento,
+      userId: user.uid,
+    });
+
+    toast.success('Chamado registrado com sucesso!');
+    setCustomerSelected(0);
+    setComplemento('');
+
+  } catch (error) {
+    console.error('Erro ao processar o chamado:', error);
+    toast.error('Ops, erro ao registrar. Tente novamente.');
+  }
+};
 
       toast.info('Chamado atualizado com sucesso!');
       navigate('/dashboard');
