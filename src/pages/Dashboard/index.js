@@ -1,7 +1,7 @@
 import { useEffect, useState, useContext } from "react"
 import Header from "../../components/Header";
 import Title from "../../components/Title";
-import { FiDelete, FiEdit2, FiMessageSquare, FiPlus, FiSearch} from "react-icons/fi";
+import { FiDelete, FiEdit2, FiMessageSquare, FiPlus, FiSearch } from "react-icons/fi";
 import { Link } from "react-router-dom";
 import './dashboard.css';
 import { collection, deleteDoc, doc, getDocs, limit, orderBy, query, startAfter, where } from "firebase/firestore";
@@ -12,7 +12,7 @@ import { toast } from "react-toastify";
 import Loading from "../../components/Loading";
 import { AuthContext } from "../../contexts/auth";
 
-const listRef = collection(db,'chamados');
+const listRef = collection(db, 'chamados');
 
 export default function Dashboard() {
   const { user } = useContext(AuthContext);
@@ -24,143 +24,56 @@ export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
   const [details, setDetails] = useState({});
 
- useEffect(() => {
-  async function loadChamados() {
-    try {
-      let q;
-      // 1. Alterado para usar isadm
-      // Se NÃO for admin, filtra apenas os chamados dele
-      if (!user?.isadm) {
-        q = query(listRef, where('userId', '==', user.uid), orderBy('created', 'desc'), limit(5));
-      } else {
-        // Se for admin, vê tudo
-        q = query(listRef, orderBy('created', 'desc'), limit(5));
+  useEffect(() => {
+    async function loadChamados() {
+      try {
+        let q;
+        // Se NÃO for admin, filtra apenas os chamados do usuário logado
+        if (!user?.isadm) {
+          q = query(listRef, where('userId', '==', user.uid), orderBy('created', 'desc'), limit(5));
+        } else {
+          // Se for admin, busca todos os chamados globalmente
+          q = query(listRef, orderBy('created', 'desc'), limit(5));
+        }
+
+        const querySnapshot = await getDocs(q);
+        setChamados([]); 
+        await updateState(querySnapshot);
+      } catch (error) {
+        console.log("ERRO:", error);
+        toast.error("Erro ao carregar chamados.");
+      } finally {
+        setLoading(false);
       }
-
-      const querySnapshot = await getDocs(q);
-      setChamados([]); 
-      await updateState(querySnapshot);
-    } catch (error) {
-      console.log("ERRO AO BUSCAR CHAMADOS: ", error);
-      // DICA: Se o erro persistir, verifique o console do navegador (F12). 
-      // O Firebase costuma enviar um link para criar o índice necessário.
-      toast.error("Erro ao carregar os chamados.");
-    } finally {
-      setLoading(false);
     }
-  }
 
-  if (user) loadChamados();
-}, [user]);
+    if (user) loadChamados();
+  }, [user]);
 
-const updateState = async (querySnapshot) => {
-  const isCollectionEmpty = (querySnapshot.size === 0);
-  if(!isCollectionEmpty){
-    let list = [];
-    querySnapshot.forEach((doc)=>{
-      const data = doc.data(); // Pegamos os dados uma vez
-      list.push({
-        id: doc.id,
-        ...data,
-        // Prevenção de erro: verifica se 'created' existe antes de converter
-        createdFormat: data.created ? format(data.created.toDate(), 'dd/MM/yyyy') : '---',
+  const updateState = async (querySnapshot) => {
+    const isCollectionEmpty = (querySnapshot.size === 0);
+    if(!isCollectionEmpty){
+      let list = [];
+      querySnapshot.forEach((doc)=>{
+        const data = doc.data();
+        list.push({
+          id: doc.id,
+          ...data,
+          createdFormat: data.created ? format(data.created.toDate(), 'dd/MM/yyyy') : '---',
+        })
       })
-    })
-    // ... resto
-  } else {
-    setIsEmpty(true);
+      setChamados((chamados) => [...chamados, ...list]);
+      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
+    } else {
+      setIsEmpty(true);
+    }
+    setLoadMore(false);
   }
-  setLoadMore(false);
-}
-
-return (
-  <div>
-    <Header />
-    <div className='content'>
-      <Title name='Chamados'>
-        <FiMessageSquare size={25}/> 
-      </Title>
-    
-      {/* 2. BOTÃO ESCONDIDO PARA ADMIN: Usando !user.isadm */}
-      {!user.isadm && (
-        <Link to='/new' className="new">
-          <FiPlus size={25} color='#fff'/>
-          Novo chamado
-        </Link>
-      )}
-    
-      {chamados.length === 0 ? (
-        <div className="container dashboard" >
-          <span>Nenhum chamado registrado...</span>
-        </div>
-      ) : (
-        <>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Cliente</th>
-                {/* 3. NOVAS COLUNAS EXCLUSIVAS PARA ADMIN */}
-                {user.isadm && (
-                  <>
-                    <th scope="col">Usuário</th>
-                    <th scope="col">Secretaria/Depto</th>
-                  </>
-                )}
-                <th scope="col">Assunto</th>
-                <th scope="col">Status</th>
-                <th scope="col">Cadastrado em</th>
-                <th scope="col">#</th>
-              </tr>
-            </thead>
-            <tbody>         
-              { chamados.map((item, index) => (
-                <tr key={index}>
-                  <td data-label='Cliente'>{item.cliente}</td>
-                  
-                  {/* 4. DADOS DO SOLICITANTE PARA O ADMIN */}
-                  {user.isadm && (
-                    <>
-                      <td data-label='Usuário'>{item.userName || '---'}</td>
-                      <td data-label='Secretaria'>{item.secretaria} / {item.departamento}</td>
-                    </>
-                  )}
-
-                  <td data-label='Assunto'>{item.assunto}</td>
-                  <td data-label='Status'>
-                    <span className="badge" style={{backgroundColor: item.status === 'Em aberto' ? '#5CB85C' : '#ccc'}}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td data-label='Cadastrado'>{item.createdFormat}</td>
-                  <td data-label='#'>
-                    <button onClick={() => toggleModal(item)} className="action" style={{backgroundColor:'#3583f6'}}>
-                      <FiSearch size={17} color='#fff' />
-                    </button>
-                    
-                    {/* O Admin agora pode editar para alterar status/gerenciar */}
-                    <Link className="action" style={{backgroundColor:'#f6a935'}} to={`/new/${item.id}`}>
-                      <FiEdit2 size={17} color='#fff'/>
-                    </Link>
-
-                    <button onClick={() => handleDelete(item)} className="action" style={{backgroundColor:'#FD441B'}}>
-                      <FiDelete size={17} color='#fff' />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {/* ... resto ... */}
-        </>
-      )}
-    </div>
-  </div>
-);
 
   const handleMore = async () => {
     setLoadMore(true);
     let q;
-    if (user?.role !== 'admin') {
+    if (!user.isadm) {
       q = query(listRef, where('userId', '==', user.uid), orderBy('created','desc'), startAfter(lastDoc), limit(5));
     } else {
       q = query(listRef, orderBy('created','desc'), startAfter(lastDoc), limit(5));
@@ -174,44 +87,32 @@ return (
     setDetails(item);
   }
 
-  // APENAS UMA DECLARAÇÃO DE handleDelete
   const handleDelete = async (item) => {
-    const agora = new Date();
-    const dataCriacao = item.created.toDate();
-    const diferencaMinutos = (agora - dataCriacao) / (1000 * 60);
-
-    // Regra: usuário comum só apaga em 15min. Admin TI apaga sempre.
-    if (user.role !== 'admin' && diferencaMinutos > 15) {
-      toast.error('O prazo de 15 minutos para exclusão expirou.');
+    // Regra: usuário comum só apaga em 15min. Admin apaga sempre.
+    const diferencaMinutos = (new Date() - item.created.toDate()) / (1000 * 60);
+    if (!user.isadm && diferencaMinutos > 15) {
+      toast.error('O prazo de 15 minutos expirou.');
       return;
     }
 
-    const docRef = doc(db, 'chamados', item.id)
-    await deleteDoc(docRef)
+    await deleteDoc(doc(db, 'chamados', item.id))
     .then(() => {
-      toast.success('Item deletado com sucesso');
+      toast.success('Deletado!');
       setChamados(chamados.filter(c => c.id !== item.id));
     })
-    .catch(() => toast.error('Ops, erro ao deletar'))
+    .catch(() => toast.error('Erro ao deletar.'));
   }
 
-  if (loading) {
-    return (
-      <div className="container dashboard">
-        <Loading size={40} color="#121212" />
-      </div>
-    );
-  }
+  if (loading) return <div className="container dashboard"><Loading size={40} color="#121212" /></div>;
 
   return (
     <div>
       <Header />
       <div className='content'>
-        <Title name='Chamados'>
-          <FiMessageSquare size={25}/> 
-        </Title>
+        <Title name='Chamados'><FiMessageSquare size={25}/></Title>
       
-        {user.role !== 'admin' && (
+        {/* SÓ APARECE PARA USUÁRIO COMUM */}
+        {!user.isadm && (
           <Link to='/new' className="new">
             <FiPlus size={25} color='#fff'/>
             Novo chamado
@@ -219,86 +120,56 @@ return (
         )}
       
         {chamados.length === 0 ? (
-          <div className="container dashboard" >
-            <span>Nenhum chamado registrado...</span>
-          </div>
+          <div className="container dashboard"><span>Nenhum chamado registrado...</span></div>
         ) : (
           <>
             <table>
-  <thead>
-    <tr>
-      <th scope="col">Cliente</th>
-      {/* 1. NOVAS COLUNAS PARA O ADMIN */}
-      {user.role === 'admin' && (
-        <>
-          <th scope="col">Usuário</th>
-          <th scope="col">Secretaria</th>
-          <th scope="col">Departamento</th>
-        </>
-      )}
-      <th scope="col">Assunto</th>
-      <th scope="col">Status</th>
-      <th scope="col">Cadastrado em</th>
-      <th scope="col">#</th>
-    </tr>
-  </thead>
-  <tbody>         
-    { chamados.map((item, index) => (
-      <tr key={index}>
-        <td data-label='Cliente'>{item.cliente}</td>
-        
-        {/* 2. EXIBIR DADOS DO SOLICITANTE PARA O ADMIN */}
-        {user.role === 'admin' && (
-          <>
-            <td data-label='Usuário'>{item.userName}</td>
-            <td data-label='Secretaria'>{item.secretaria}</td>
-            <td data-label='Departamento'>{item.departamento}</td>
-          </>
-        )}
-
-        <td data-label='Assunto'>{item.assunto}</td>
-        <td data-label='Status'>
-          <span className="badge" style={{backgroundColor: item.status === 'Em aberto' ? '#5CB85C' : '#ccc'}}>
-            {item.status}
-          </span>
-        </td>
-        <td data-label='Cadastrado'>{item.createdFormat}</td>
-        <td data-label='#'>
-          <button onClick={() => toggleModal(item)} className="action" style={{backgroundColor:'#3583f6'}}>
-            <FiSearch size={17} color='#fff' />
-          </button>
-
-          {/* 3. REMOVIDA A TRAVA QUE IMPEDIA O ADMIN DE EDITAR */}
-          <Link className="action" style={{backgroundColor:'#f6a935'}} to={`/new/${item.id}`}>
-            <FiEdit2 size={17} color='#fff'/>
-          </Link>
-
-          <button onClick={() => handleDelete(item)} className="action" style={{backgroundColor:'#FD441B'}}>
-            <FiDelete size={17} color='#fff' />
-          </button>
-        </td>
-      </tr>
-    ))}
-  </tbody>
-</table>
-
-            {loadMore && (
-              <div style={{ marginTop: 15 }}>
-                <Loading size={20} color="#121212" />
-              </div>
-            )}
-            {!isEmpty && !loadMore && 
-              <button onClick={handleMore} className='btn-more'>Buscar mais</button>
-            }
+              <thead>
+                <tr>
+                  <th scope="col">Cliente</th>
+                  {user.isadm && (
+                    <>
+                      <th scope="col">Solicitante</th>
+                      <th scope="col">Setor</th>
+                    </>
+                  )}
+                  <th scope="col">Assunto</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Data</th>
+                  <th scope="col">#</th>
+                </tr>
+              </thead>
+              <tbody>         
+                { chamados.map((item, index) => (
+                  <tr key={index}>
+                    <td data-label='Cliente'>{item.cliente}</td>
+                    {user.isadm && (
+                      <>
+                        <td data-label='Solicitante'>{item.userName}</td>
+                        <td data-label='Setor'>{item.secretaria} / {item.departamento}</td>
+                      </>
+                    )}
+                    <td data-label='Assunto'>{item.assunto}</td>
+                    <td data-label='Status'>
+                      <span className="badge" style={{backgroundColor: item.status === 'Em aberto' ? '#5CB85C' : '#ccc'}}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td data-label='Data'>{item.createdFormat}</td>
+                    <td data-label='#'>
+                      <button onClick={() => toggleModal(item)} className="action" style={{backgroundColor:'#3583f6'}}><FiSearch size={17} color='#fff' /></button>
+                      <Link className="action" style={{backgroundColor:'#f6a935'}} to={`/new/${item.id}`}><FiEdit2 size={17} color='#fff'/></Link>
+                      <button onClick={() => handleDelete(item)} className="action" style={{backgroundColor:'#FD441B'}}><FiDelete size={17} color='#fff' /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!isEmpty && !loadMore && <button onClick={handleMore} className='btn-more'>Buscar mais</button>}
           </>
         )}
       </div>
-      {showModal && (
-        <Modal 
-          conteudo={details}
-          buttomBack={() => setShowModal(!showModal)} 
-        />
-      )}
+      {showModal && <Modal conteudo={details} buttomBack={() => setShowModal(!showModal)} />}
     </div>
   )
 }
