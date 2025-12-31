@@ -36,20 +36,39 @@ function AuthProvider({ children }){
 
 // Adicione secretaria e departamento aos parâmetros
 async function signUp(name, email, password, secretaria, departamento) {
-  setLoadingAuth(true);
+  // ... resto do código
+  await setDoc(doc(db, 'users', uid), {
+    nome: name,
+    avatarUrl: null,
+    secretaria: secretaria,
+    departamento: departamento,
+    isadm: false, // Usando o campo booleano solicitado
+  });
 
-  try {
-    const value = await createUserWithEmailAndPassword(auth, email, password);
-    const uid = value.user.uid;
+  const data = {
+    uid: uid,
+    nome: name,
+    email: email,
+    avatarUrl: null,
+    secretaria: secretaria,
+    departamento: departamento,
+    isadm: false,
+  };
+  // ... rest
+}
 
-    // Grava no Firestore com os novos campos e o papel 'user'
-    await setDoc(doc(db, 'users', uid), {
-      nome: name,
-      avatarUrl: null,
-      secretaria: secretaria,
-      departamento: departamento,
-      role: 'user', // Define como usuário comum por padrão
-    });
+// No signIn, busque o campo isadm do Firestore
+async function signIn(email, password) {
+  // ... resto do código
+  const data = {
+    uid: uid,
+    nome: docSnap.data().nome,
+    email: value.user.email,
+    avatarUrl: docSnap.data().avatarUrl,
+    secretaria: docSnap.data().secretaria,
+    departamento: docSnap.data().departamento,
+    isadm: docSnap.data().isadm, // Recupera o valor booleano
+  };
 
     const data = {
       uid: uid,
