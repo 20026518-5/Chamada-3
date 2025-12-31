@@ -24,50 +24,138 @@ export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
   const [details, setDetails] = useState({});
 
-  useEffect(() => {
-    async function loadChamados() {
-      try {
-        let q;
-        // Filtra por usuário se não for admin
-        if (user?.role !== 'admin') {
-          q = query(listRef, where('userId', '==', user.uid), orderBy('created', 'desc'), limit(5));
-        } else {
-          q = query(listRef, orderBy('created', 'desc'), limit(5));
-        }
-
-        const querySnapshot = await getDocs(q);
-        setChamados([]); 
-        await updateState(querySnapshot);
-      } catch (error) {
-        console.log("ERRO AO BUSCAR CHAMADOS: ", error);
-        toast.error("Erro ao carregar os chamados.");
-      } finally {
-        setLoading(false);
+ useEffect(() => {
+  async function loadChamados() {
+    try {
+      let q;
+      // 1. Alterado para usar isadm
+      // Se NÃO for admin, filtra apenas os chamados dele
+      if (!user?.isadm) {
+        q = query(listRef, where('userId', '==', user.uid), orderBy('created', 'desc'), limit(5));
+      } else {
+        // Se for admin, vê tudo
+        q = query(listRef, orderBy('created', 'desc'), limit(5));
       }
-    }
 
-    if (user) loadChamados();
-  }, [user]);
-
-  const updateState = async (querySnapshot) => {
-    const isCollectionEmpty = (querySnapshot.size === 0);
-    if(!isCollectionEmpty){
-      let list = [];
-      querySnapshot.forEach((doc)=>{
-        list.push({
-          id: doc.id,
-          ...doc.data(),
-          createdFormat: format(doc.data().created.toDate(), 'dd/MM/yyyy'),
-        })
-      })
-      setChamados((chamados) => [...chamados, ...list]);
-      const lastItem = querySnapshot.docs[querySnapshot.docs.length -1];
-      setLastDoc(lastItem);
-    } else {
-      setIsEmpty(true);
+      const querySnapshot = await getDocs(q);
+      setChamados([]); 
+      await updateState(querySnapshot);
+    } catch (error) {
+      console.log("ERRO AO BUSCAR CHAMADOS: ", error);
+      // DICA: Se o erro persistir, verifique o console do navegador (F12). 
+      // O Firebase costuma enviar um link para criar o índice necessário.
+      toast.error("Erro ao carregar os chamados.");
+    } finally {
+      setLoading(false);
     }
-    setLoadMore(false);
   }
+
+  if (user) loadChamados();
+}, [user]);
+
+const updateState = async (querySnapshot) => {
+  const isCollectionEmpty = (querySnapshot.size === 0);
+  if(!isCollectionEmpty){
+    let list = [];
+    querySnapshot.forEach((doc)=>{
+      const data = doc.data(); // Pegamos os dados uma vez
+      list.push({
+        id: doc.id,
+        ...data,
+        // Prevenção de erro: verifica se 'created' existe antes de converter
+        createdFormat: data.created ? format(data.created.toDate(), 'dd/MM/yyyy') : '---',
+      })
+    })
+    // ... resto
+  } else {
+    setIsEmpty(true);
+  }
+  setLoadMore(false);
+}
+
+return (
+  <div>
+    <Header />
+    <div className='content'>
+      <Title name='Chamados'>
+        <FiMessageSquare size={25}/> 
+      </Title>
+    
+      {/* 2. BOTÃO ESCONDIDO PARA ADMIN: Usando !user.isadm */}
+      {!user.isadm && (
+        <Link to='/new' className="new">
+          <FiPlus size={25} color='#fff'/>
+          Novo chamado
+        </Link>
+      )}
+    
+      {chamados.length === 0 ? (
+        <div className="container dashboard" >
+          <span>Nenhum chamado registrado...</span>
+        </div>
+      ) : (
+        <>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Cliente</th>
+                {/* 3. NOVAS COLUNAS EXCLUSIVAS PARA ADMIN */}
+                {user.isadm && (
+                  <>
+                    <th scope="col">Usuário</th>
+                    <th scope="col">Secretaria/Depto</th>
+                  </>
+                )}
+                <th scope="col">Assunto</th>
+                <th scope="col">Status</th>
+                <th scope="col">Cadastrado em</th>
+                <th scope="col">#</th>
+              </tr>
+            </thead>
+            <tbody>         
+              { chamados.map((item, index) => (
+                <tr key={index}>
+                  <td data-label='Cliente'>{item.cliente}</td>
+                  
+                  {/* 4. DADOS DO SOLICITANTE PARA O ADMIN */}
+                  {user.isadm && (
+                    <>
+                      <td data-label='Usuário'>{item.userName || '---'}</td>
+                      <td data-label='Secretaria'>{item.secretaria} / {item.departamento}</td>
+                    </>
+                  )}
+
+                  <td data-label='Assunto'>{item.assunto}</td>
+                  <td data-label='Status'>
+                    <span className="badge" style={{backgroundColor: item.status === 'Em aberto' ? '#5CB85C' : '#ccc'}}>
+                      {item.status}
+                    </span>
+                  </td>
+                  <td data-label='Cadastrado'>{item.createdFormat}</td>
+                  <td data-label='#'>
+                    <button onClick={() => toggleModal(item)} className="action" style={{backgroundColor:'#3583f6'}}>
+                      <FiSearch size={17} color='#fff' />
+                    </button>
+                    
+                    {/* O Admin agora pode editar para alterar status/gerenciar */}
+                    <Link className="action" style={{backgroundColor:'#f6a935'}} to={`/new/${item.id}`}>
+                      <FiEdit2 size={17} color='#fff'/>
+                    </Link>
+
+                    <button onClick={() => handleDelete(item)} className="action" style={{backgroundColor:'#FD441B'}}>
+                      <FiDelete size={17} color='#fff' />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {/* ... resto ... */}
+        </>
+      )}
+    </div>
+  </div>
+);
 
   const handleMore = async () => {
     setLoadMore(true);
