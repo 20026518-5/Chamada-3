@@ -3,6 +3,19 @@ import { Link } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 import { AuthContext } from '../../contexts/auth';
 import { FaSpinner } from "react-icons/fa";
+const [secretaria, setSecretaria] = useState('');
+const [departamento, setDepartamento] = useState('');
+
+function handleSignUp(e) {
+  e.preventDefault();
+  if(name !== '' && email !== '' && password !== '' && secretaria !== '' && departamento !== ''){
+     signUp(name, email, password, secretaria, departamento);
+  } else {
+     toast.error("Preencha todos os campos!");
+  }
+}
+
+// No return, adicione os inputs de texto para secretaria e departamento antes do botão
 
 function SignUp() {
   const [email,setEmail] = useState('');
