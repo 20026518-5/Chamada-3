@@ -3,73 +3,74 @@ import { Link } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 import { AuthContext } from '../../contexts/auth';
 import { FaSpinner } from "react-icons/fa";
-const [secretaria, setSecretaria] = useState('');
-const [departamento, setDepartamento] = useState('');
-
-function handleSignUp(e) {
-  e.preventDefault();
-  if(name !== '' && email !== '' && password !== '' && secretaria !== '' && departamento !== ''){
-     signUp(name, email, password, secretaria, departamento);
-  } else {
-     toast.error("Preencha todos os campos!");
-  }
-}
-
-// No return, adicione os inputs de texto para secretaria e departamento antes do botão
+import { toast } from 'react-toastify'; // Importação que faltava
 
 function SignUp() {
-  const [email,setEmail] = useState('');
-  const [password,setPassword] = useState('');
-  const [name,setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [secretaria, setSecretaria] = useState(''); // Novo campo
+  const [departamento, setDepartamento] = useState(''); // Novo campo
 
-  const {signUp,loadingAuth} = useContext(AuthContext);
+  const { signUp, loadingAuth } = useContext(AuthContext);
   
-   function handleSignUp(e) {
-  e.preventDefault();
-  if(name !== '' && email !== '' && password !== ''){
-     signUp(name,email,password);
+  function handleSignUp(e) {
+    e.preventDefault();
+    // Verificando se todos os campos estão preenchidos
+    if(name !== '' && email !== '' && password !== '' && secretaria !== '' && departamento !== ''){
+       signUp(name, email, password, secretaria, departamento);
+    } else {
+       toast.error("Preencha todos os campos, incluindo Secretaria e Departamento!");
+    }
   }
-}
 
-return (
+  return (
     <div className="container-center">
       <div className="login">
-      <div className="login-area">
-        <img src={logo} alt='logo signUp'/>
+        <div className="login-area">
+          <img src={logo} alt='logo signUp'/>
+        </div>
+
+        <form className='form' onSubmit={handleSignUp}>
+          <h1>Nova Conta</h1>
+          <input 
+            type="text" 
+            value={name} 
+            onChange={(e) => setName(e.target.value)} 
+            placeholder='Nome' 
+          />
+          <input 
+            type="text" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
+            placeholder='E-mail'
+          />
+          <input 
+            type="password" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)} 
+            placeholder='Senha' 
+          />
+          {/* Novos Inputs */}
+          <input 
+            type="text" 
+            value={secretaria} 
+            onChange={(e) => setSecretaria(e.target.value)} 
+            placeholder='Sua Secretaria' 
+          />
+          <input 
+            type="text" 
+            value={departamento} 
+            onChange={(e) => setDepartamento(e.target.value)} 
+            placeholder='Seu Departamento' 
+          />
+
+          <button type="submit" disabled={loadingAuth}>
+            {loadingAuth ? <FaSpinner className="loading-spinner" /> : "Cadastrar"}
+          </button>
+        </form>
+        <Link to='/'>Já possuo conta!</Link>
       </div>
-
-
-
-      <form className='form' onSubmit={handleSignUp}>
-      <h1>Nova Conta</h1>
-        <input 
-        type="text" 
-        value={name} 
-        onChange={(e)=>setName(e.target.value)} 
-        placeholder='Nome' 
-        />
-        <input 
-          type="text" 
-          value={email} 
-          onChange={(e)=>setEmail(e.target.value)} 
-          placeholder='E-mail'
-         />
-        <input 
-          type="password" 
-          value={password} 
-          onChange={(e)=>setPassword(e.target.value)} 
-          placeholder='Senha' 
-        />
-        <button type="submit" disabled={loadingAuth}>
-          {loadingAuth ? (
-          <FaSpinner className="loading-spinner" />
-          ) : (
-            "Entrar"
-          )}
-      </button>
-      </form>
-      <Link to='/'>Já possuo conta!</Link>
-    </div>
     </div>
   );
 }
