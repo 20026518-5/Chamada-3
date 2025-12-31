@@ -66,24 +66,24 @@ export default function New(){
     }
   }
 
-  const handleRegister = async (e) => { // ASYNC ADICIONADO AQUI
-    e.preventDefault();
+const handleRegister = async (e) => {
+  e.preventDefault();
 
-    try {
-      if(editId){
-        const docRef = doc(db, 'chamados', id);
-        await updateDoc(docRef, {
-          cliente: customers[customerSelected].nomeEmpresa,
-          clienteId: customers[customerSelected].id,
-          assunto: assunto,
-          status: status,
-          complemento: complemento,
-          userId: user.uid,
-        });
-        toast.info('Chamado atualizado!');
-        navigate('/dashboard');
-        return;
-      }
+  try {
+    if(editId){
+      const docRef = doc(db, 'chamados', id);
+      await updateDoc(docRef, {
+        cliente: customers[customerSelected].nomeEmpresa,
+        clienteId: customers[customerSelected].id,
+        assunto: assunto,
+        status: status,
+        complemento: complemento,
+        // userId: user.uid,  <-- Remova esta linha para manter o dono original do chamado
+      });
+      toast.info('Chamado atualizado!');
+      navigate('/dashboard');
+      return;
+    }
 
       // NOVO CHAMADO: Vincula Secretaria e Departamento do Usuário
       await addDoc(collection(db, 'chamados'), {
