@@ -34,64 +34,67 @@ function AuthProvider({ children }){
     loadUser();
   }, [])
 
-  async function signIn(email, password){
-    setLoadingAuth(true);
-    await signInWithEmailAndPassword(auth,email,password)
-    .then(async (value)=>{
-      let uid = value.user.uid;
-      const docRef = doc(db,'users',uid);
-      const docSnap = await getDoc(docRef);
+async function signIn(email, password) {
+  setLoadingAuth(true);
 
-      let data = {
-        uid:uid,
-        nome:docSnap.data().nome,
-        email:value.user.email,
-        avatarUrl:docSnap.data().avatarUrl,
-    }
-      setUser(data);
-      storageUser(data);
-      setLoadingAuth(false);
-      toast.success('Bem-vindo de volta');
-      navigate('/dashboard');
-  })
-    .catch((err)=>{
-      console.log('error: ' + err);
-      toast.error('Ops,algo deu errado');
-      setLoadingAuth(false);
-    })
-      
-  }
+  try {
+    const value = await signInWithEmailAndPassword(auth, email, password);
+    const uid = value.user.uid;
 
-  async function signUp(name,email, password){ //cadastrar novo usuario
-    setLoadingAuth(true);
-   await createUserWithEmailAndPassword(auth,email,password)
-    .then(async (value)=>{
-      let uid = value.user.uid;
-      await setDoc(doc(db,'users',uid),{
-        nome:name,
-        avatarUrl:null,
-      })
-      .then(()=>{
-        let data = {
-          uid:uid,
-          nome:name,
-          email:email,
-          avatarUrl:null,
-          
-        }
-        setUser(data);
-        storageUser(data);
-        setLoadingAuth(false);
-        toast.success('cadastrado com sucesso');
-        navigate('/dashboard');
-      })
-    })
-    .catch((err)=>{
-      console.log('error: ' + err);
-      toast.error('erro ao cadastrar');
-      setLoadingAuth(false);
-    })
+    const docRef = doc(db, 'users', uid);
+    const docSnap = await getDoc(docRef);
+
+    const data = {
+      uid: uid,
+      nome: docSnap.data().nome,
+      email: value.user.email,
+      avatarUrl: docSnap.data().avatarUrl,
+    };
+
+    setUser(data);
+    storageUser(data);
+    setLoadingAuth(false);
+    toast.success('Bem-vindo de volta');
+    navigate('/dashboard');
+
+  } catch (err) {
+    console.error('Erro ao logar:', err);
+    toast.error('Ops, algo deu errado. Verifique suas credenciais.');
+    setLoadingAuth(false);
   }
+}
+
+async function signUp(name, email, password) {
+  setLoadingAuth(true);
+
+  try {
+    const value = await createUserWithEmailAndPassword(auth, email, password);
+    const uid = value.user.uid;
+
+    await setDoc(doc(db, 'users', uid), {
+      nome: name,
+      avatarUrl: null,
+    });
+
+    const data = {
+      uid: uid,
+      nome: name,
+      email: email,
+      avatarUrl: null,
+    };
+
+    setUser(data);
+    storageUser(data);
+    setLoadingAuth(false);
+    toast.success('Cadastrado com sucesso');
+    navigate('/dashboard');
+
+  } catch (err) {
+    console.error('Erro ao cadastrar:', err);
+    toast.error('Erro ao cadastrar usuário.');
+    setLoadingAuth(false);
+  }
+}
 
   function storageUser(data){
     localStorage.setItem('@userdata',JSON.stringify(data));
