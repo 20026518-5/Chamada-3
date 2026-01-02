@@ -3,16 +3,16 @@ import { db } from '../../services/firebaseConnection';
 import { collection, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import Header from '../../components/Header';
 import Title from '../../components/Title';
-import { FiSettings, FiTrash2 } from 'react-icons/fi';
+import { FiSettings, FiTrash2, FiPlus } from 'react-icons/fi'; // Adicionei FiPlus
 import { toast } from 'react-toastify';
 
 export default function Settings() {
   const [secretaria, setSecretaria] = useState('');
-  const [departamento, setDepartamento] = useState('');
+  const [departamentoInput, setDepartamentoInput] = useState(''); // Input individual
+  const [listaDepartamentos, setListaDepartamentos] = useState([]); // Lista para o lote
   const [setores, setSetores] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Carrega os setores ao abrir a página
   useEffect(() => {
     async function loadSetores() {
       try {
@@ -32,32 +32,50 @@ export default function Settings() {
     loadSetores();
   }, []);
 
-  async function handleAdd(e) {
+  // Adiciona o departamento na lista temporária da tela
+  function handleAddToList(e) {
     e.preventDefault();
+    if (departamentoInput === '') {
+      toast.warning("Digite o nome do departamento!");
+      return;
+    }
+    setListaDepartamentos([...listaDepartamentos, departamentoInput]);
+    setDepartamentoInput('');
+  }
 
-    if (secretaria === '' || departamento === '') {
-      toast.warning("Preencha todos os campos!");
+  // Remove da lista temporária (antes de salvar no banco)
+  function handleRemoveFromList(index) {
+    let novaLista = listaDepartamentos.filter((_, i) => i !== index);
+    setListaDepartamentos(novaLista);
+  }
+
+  // Salva tudo no Firebase
+  async function handleSaveAll() {
+    if (secretaria === '' || listaDepartamentos.length === 0) {
+      toast.warning("Preencha a secretaria e adicione ao menos um departamento!");
       return;
     }
 
     try {
-      // Adiciona no Banco de Dados
-      const docRef = await addDoc(collection(db, 'setores'), {
-        secretaria: secretaria,
-        departamento: departamento
+      // Cria uma promessa para cada departamento para salvar individualmente
+      // mantendo a compatibilidade com o seu filtro no SignUp
+      const promessas = listaDepartamentos.map(dep => {
+        return addDoc(collection(db, 'setores'), {
+          secretaria: secretaria,
+          departamento: dep
+        });
       });
 
-      // Se chegou aqui, funcionou. Agora atualizamos a lista na tela
-      const novoSetor = {
-        id: docRef.id,
-        secretaria: secretaria,
-        departamento: departamento
-      };
+      await Promise.all(promessas);
 
-      setSetores([...setores, novoSetor]);
+      toast.success("Secretaria e departamentos cadastrados!");
+      
+      // Limpa os campos e recarrega a lista da tela
       setSecretaria('');
-      setDepartamento('');
-      toast.success("Setor cadastrado com sucesso!");
+      setListaDepartamentos([]);
+      
+      // Recarregar lista total (opcional: você pode dar um push no estado setores para ser mais rápido)
+      window.location.reload(); 
 
     } catch (error) {
       console.error("Erro ao cadastrar: ", error);
@@ -86,7 +104,7 @@ export default function Settings() {
         </Title>
 
         <div className="container">
-          <form className="form-profile" onSubmit={handleAdd}>
+          <div className="form-profile">
             <label>Secretaria</label>
             <input 
               type="text" 
@@ -95,16 +113,37 @@ export default function Settings() {
               placeholder="Ex: Secretaria de Saúde" 
             />
 
-            <label>Departamento</label>
-            <input 
-              type="text" 
-              value={departamento} 
-              onChange={(e) => setDepartamento(e.target.value)} 
-              placeholder="Ex: Almoxarifado" 
-            />
+            <label>Adicionar Departamento</label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+                <input 
+                  type="text" 
+                  value={departamentoInput} 
+                  onChange={(e) => setDepartamentoInput(e.target.value)} 
+                  placeholder="Ex: Almoxarifado" 
+                  style={{ flex: 1, marginBottom: 0 }}
+                />
+                <button onClick={handleAddToList} style={{ width: '50px', backgroundColor: '#181c2e' }}>
+                    <FiPlus size={20} color="#FFF" />
+                </button>
+            </div>
 
-            <button type="submit">Cadastrar Setor</button>
-          </form>
+            {/* Lista temporária de departamentos antes de salvar */}
+            {listaDepartamentos.length > 0 && (
+                <div style={{ marginTop: '15px', padding: '10px', background: '#f8f8f8', borderRadius: '5px' }}>
+                    <p><strong>Departamentos a cadastrar:</strong></p>
+                    <ul style={{ listStyle: 'none', marginTop: '5px' }}>
+                        {listaDepartamentos.map((dep, index) => (
+                            <li key={index} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                {dep}
+                                <button onClick={() => handleRemoveFromList(index)} style={{ border: 'none', background: 'none', color: 'red', cursor: 'pointer' }}>Excluir</button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            <button onClick={handleSaveAll} style={{ marginTop: '20px' }}>Cadastrar Todos</button>
+          </div>
         </div>
 
         <div className="container">
