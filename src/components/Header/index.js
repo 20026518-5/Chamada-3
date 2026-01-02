@@ -6,6 +6,17 @@ import {FiHome, FiSettings, FiUser, FiLogOut} from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import './header.css';
 
+// No import adicione FiList
+import { FiHome, FiSettings, FiUser, FiLogOut, FiList } from 'react-icons/fi';
+
+// Dentro do componente Header:
+{user.isadm && (
+  <Link to='/settings'>
+    <FiList color='#fff' size={24} />
+    Setores
+  </Link>
+)}
+
 export default function Header() {
   // 2. Pegue a função logOut do seu contexto
   const {user, logOut} = useContext(AuthContext); 
