@@ -1,31 +1,19 @@
 import { useContext } from 'react';
 import avatarImg from '../../assets/avatar.png';   
 import { AuthContext } from '../../contexts/auth';
-// 1. Adicione o FiLogOut nos imports
-import {FiHome, FiSettings, FiUser, FiLogOut} from 'react-icons/fi'; 
+import { FiHome, FiSettings, FiUser, FiLogOut, FiList } from 'react-icons/fi'; // Import único e completo
 import { Link } from 'react-router-dom';
 import './header.css';
 
-// No import adicione FiList
-import { FiHome, FiSettings, FiUser, FiLogOut, FiList } from 'react-icons/fi';
-
-// Dentro do componente Header:
-{user.isadm && (
-  <Link to='/settings'>
-    <FiList color='#fff' size={24} />
-    Setores
-  </Link>
-)}
-
 export default function Header() {
-  // 2. Pegue a função logOut do seu contexto
-  const {user, logOut} = useContext(AuthContext); 
+  const { user, logOut } = useContext(AuthContext);
 
   return (
     <div className='sidebar'>
       <div>
-        <img src={user.avatarUrl === null ? avatarImg : user.avatarUrl} alt = 'foto do usuario' />
+        <img src={user.avatarUrl === null ? avatarImg : user.avatarUrl} alt='foto do usuario' />
       </div>
+      
       <Link to='/dashboard'>
         <FiHome color='#fff' size={24} />
         Chamados
@@ -41,8 +29,15 @@ export default function Header() {
         Perfil
       </Link>
 
-      {/* 3. Adicione o botão de logout */}
-      <button onClick={ () => logOut() } className="logout-btn">
+      {/* Aba de Setores visível apenas para Admin */}
+      {user.isadm && (
+        <Link to='/settings'>
+          <FiList color='#fff' size={24} />
+          Setores
+        </Link>
+      )}
+
+      <button onClick={() => logOut()} className="logout-btn">
         <FiLogOut color='#fff' size={24} />
         Sair
       </button>
