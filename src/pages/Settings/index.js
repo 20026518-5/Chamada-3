@@ -25,15 +25,29 @@ export default function Settings() {
 
   async function handleAdd(e) {
     e.preventDefault();
-    if (secretaria !== '' && departamento !== '') {
-      await addDoc(collection(db, 'setores'), {
-        secretaria: secretaria,
-        departamento: departamento
-      }).then(() => {
-        toast.success("Setor cadastrado!");
-        setSecretaria(''); setDepartamento('');
-      });
+    if (secretaria === '' || departamento === '') {
+      toast.error("Preencha todos os campos!");
+      return;
     }
+
+    await addDoc(collection(db, 'setores'), {
+      secretaria: secretaria,
+      departamento: departamento
+    }).then(() => {
+      toast.success("Setor cadastrado!");
+      setSecretaria('');
+      setDepartamento('');
+      // Atualiza a lista localmente para o admin ver o que acabou de criar
+      setSetores([...setores, { secretaria, departamento }]);
+    });
+  }
+
+  async function handleDelete(id) {
+    const docRef = doc(db, 'setores', id);
+    await deleteDoc(docRef).then(() => {
+      toast.success("Setor excluído!");
+      setSetores(setores.filter(item => item.id !== id));
+    });
   }
 
   return (
@@ -47,8 +61,33 @@ export default function Settings() {
             <input type="text" value={secretaria} onChange={(e) => setSecretaria(e.target.value)} placeholder="Ex: Saúde" />
             <label>Departamento</label>
             <input type="text" value={departamento} onChange={(e) => setDepartamento(e.target.value)} placeholder="Ex: Almoxarifado" />
-            <button type="submit">Salvar</button>
+            <button type="submit">Cadastrar Setor</button>
           </form>
+        </div>
+
+        <div className="container">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Secretaria</th>
+                <th scope="col">Departamento</th>
+                <th scope="col">#</th>
+              </tr>
+            </thead>
+            <tbody>
+              {setores.map((item, index) => (
+                <tr key={index}>
+                  <td data-label="Secretaria">{item.secretaria}</td>
+                  <td data-label="Departamento">{item.departamento}</td>
+                  <td data-label="#">
+                    <button className="action" style={{backgroundColor: '#FD441B'}} onClick={() => handleDelete(item.id)}>
+                      <FiTrash2 size={15} color="#FFF" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
