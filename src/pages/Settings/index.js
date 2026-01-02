@@ -3,13 +3,13 @@ import { db } from '../../services/firebaseConnection';
 import { collection, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import Header from '../../components/Header';
 import Title from '../../components/Title';
-import { FiSettings, FiTrash2, FiPlus } from 'react-icons/fi'; // Adicionei FiPlus
+import { FiSettings, FiTrash2, FiPlus } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 
 export default function Settings() {
   const [secretaria, setSecretaria] = useState('');
   const [departamentoInput, setDepartamentoInput] = useState(''); // Input individual
-  const [listaDepartamentos, setListaDepartamentos] = useState([]); // Lista para o lote
+  const [listaDepartamentos, setListaDepartamentos] = useState([]); // Lista temporária
   const [setores, setSetores] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,7 +24,6 @@ export default function Settings() {
         setSetores(lista);
       } catch (error) {
         console.error("Erro ao buscar setores: ", error);
-        toast.error("Erro ao carregar lista de setores.");
       } finally {
         setLoading(false);
       }
@@ -43,13 +42,13 @@ export default function Settings() {
     setDepartamentoInput('');
   }
 
-  // Remove da lista temporária (antes de salvar no banco)
+  // Remove da lista temporária
   function handleRemoveFromList(index) {
     let novaLista = listaDepartamentos.filter((_, i) => i !== index);
     setListaDepartamentos(novaLista);
   }
 
-  // Salva tudo no Firebase
+  // Salva no Firebase (Mantém compatibilidade com o seu SignUp atual)
   async function handleSaveAll() {
     if (secretaria === '' || listaDepartamentos.length === 0) {
       toast.warning("Preencha a secretaria e adicione ao menos um departamento!");
@@ -57,28 +56,25 @@ export default function Settings() {
     }
 
     try {
-      // Cria uma promessa para cada departamento para salvar individualmente
-      // mantendo a compatibilidade com o seu filtro no SignUp
-      const promessas = listaDepartamentos.map(dep => {
+      // Cria cada departamento como um documento para o filtro de 'SignUp' funcionar
+      const promises = listaDepartamentos.map(dep => {
         return addDoc(collection(db, 'setores'), {
           secretaria: secretaria,
           departamento: dep
         });
       });
 
-      await Promise.all(promessas);
+      await Promise.all(promises);
 
       toast.success("Secretaria e departamentos cadastrados!");
-      
-      // Limpa os campos e recarrega a lista da tela
       setSecretaria('');
       setListaDepartamentos([]);
       
-      // Recarregar lista total (opcional: você pode dar um push no estado setores para ser mais rápido)
+      // Recarrega a página para atualizar a tabela
       window.location.reload(); 
 
     } catch (error) {
-      console.error("Erro ao cadastrar: ", error);
+      console.error(error);
       toast.error("Falha ao salvar no banco de dados.");
     }
   }
@@ -90,7 +86,6 @@ export default function Settings() {
       setSetores(setores.filter(item => item.id !== id));
       toast.success("Setor excluído!");
     } catch (error) {
-      console.error("Erro ao deletar: ", error);
       toast.error("Erro ao excluir setor.");
     }
   }
@@ -113,7 +108,7 @@ export default function Settings() {
               placeholder="Ex: Secretaria de Saúde" 
             />
 
-            <label>Adicionar Departamento</label>
+            <label>Adicionar Departamentos</label>
             <div style={{ display: 'flex', gap: '10px' }}>
                 <input 
                   type="text" 
@@ -127,14 +122,14 @@ export default function Settings() {
                 </button>
             </div>
 
-            {/* Lista temporária de departamentos antes de salvar */}
+            {/* Listagem visual do que será cadastrado */}
             {listaDepartamentos.length > 0 && (
                 <div style={{ marginTop: '15px', padding: '10px', background: '#f8f8f8', borderRadius: '5px' }}>
-                    <p><strong>Departamentos a cadastrar:</strong></p>
+                    <p><strong>Aguardando cadastro:</strong></p>
                     <ul style={{ listStyle: 'none', marginTop: '5px' }}>
                         {listaDepartamentos.map((dep, index) => (
-                            <li key={index} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                {dep}
+                            <li key={index} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', alignItems: 'center' }}>
+                                <span>{dep}</span>
                                 <button onClick={() => handleRemoveFromList(index)} style={{ border: 'none', background: 'none', color: 'red', cursor: 'pointer' }}>Excluir</button>
                             </li>
                         ))}
@@ -142,15 +137,14 @@ export default function Settings() {
                 </div>
             )}
 
-            <button onClick={handleSaveAll} style={{ marginTop: '20px' }}>Cadastrar Todos</button>
+            <button onClick={handleSaveAll} style={{ marginTop: '20px' }}>Cadastrar Secretaria e Departamentos</button>
           </div>
         </div>
 
+        {/* Tabela de Setores já cadastrados */}
         <div className="container">
           {loading ? (
             <span>Carregando setores...</span>
-          ) : setores.length === 0 ? (
-            <span>Nenhum setor cadastrado.</span>
           ) : (
             <table>
               <thead>
@@ -166,11 +160,7 @@ export default function Settings() {
                     <td data-label="Secretaria">{item.secretaria}</td>
                     <td data-label="Departamento">{item.departamento}</td>
                     <td data-label="Ações">
-                      <button 
-                        className="action" 
-                        style={{ backgroundColor: '#FD441B' }} 
-                        onClick={() => handleDelete(item.id)}
-                      >
+                      <button className="action" style={{ backgroundColor: '#FD441B' }} onClick={() => handleDelete(item.id)}>
                         <FiTrash2 size={15} color="#FFF" />
                       </button>
                     </td>
