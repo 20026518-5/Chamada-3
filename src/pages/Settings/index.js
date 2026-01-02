@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../services/firebaseConnection';
-import { collection, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, writeBatch, query, where } from 'firebase/firestore';
 import Header from '../../components/Header';
 import Title from '../../components/Title';
-import { FiSettings, FiTrash2, FiPlus, FiList } from 'react-icons/fi';
+import { FiSettings, FiTrash2, FiPlus, FiList, FiEdit2, FiCheck, FiX } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 
 export default function Settings() {
@@ -13,87 +13,100 @@ export default function Settings() {
   const [setores, setSetores] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Estados para edição
+  const [editandoId, setEditandoId] = useState(null); // ID do departamento sendo editado
+  const [novoNomeDep, setNovoNomeDep] = useState('');
+  const [editandoSec, setEditandoSec] = useState(null); // Nome da secretaria sendo editada
+  const [novoNomeSec, setNovoNomeSec] = useState('');
+
   useEffect(() => {
-    async function loadSetores() {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'setores'));
-        let lista = [];
-        querySnapshot.forEach((doc) => {
-          lista.push({ id: doc.id, ...doc.data() });
-        });
-        setSetores(lista);
-      } catch (error) {
-        console.error("Erro ao buscar setores: ", error);
-      } finally {
-        setLoading(false);
-      }
-    }
     loadSetores();
   }, []);
 
-  function handleAddToList(e) {
-    e.preventDefault();
-    if (departamentoInput === '') {
-      toast.warning("Digite o nome do departamento!");
-      return;
-    }
-    setListaDepartamentos([...listaDepartamentos, departamentoInput]);
-    setDepartamentoInput('');
-  }
-
-  function handleRemoveFromList(index) {
-    let novaLista = listaDepartamentos.filter((_, i) => i !== index);
-    setListaDepartamentos(novaLista);
-  }
-
-  async function handleSaveAll() {
-    if (secretaria === '' || listaDepartamentos.length === 0) {
-      toast.warning("Preencha a secretaria e adicione ao menos um departamento!");
-      return;
-    }
-
+  async function loadSetores() {
+    setLoading(true);
     try {
-      const promises = listaDepartamentos.map(dep => {
-        return addDoc(collection(db, 'setores'), {
-          secretaria: secretaria.trim(),
-          departamento: dep.trim()
-        });
-      });
-
-      await Promise.all(promises);
-      toast.success("Cadastrado com sucesso!");
-      setSecretaria('');
-      setListaDepartamentos([]);
-      
       const querySnapshot = await getDocs(collection(db, 'setores'));
       let lista = [];
       querySnapshot.forEach((doc) => {
         lista.push({ id: doc.id, ...doc.data() });
       });
       setSetores(lista);
-
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao salvar no banco.");
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function handleDelete(id) {
+  function handleAddToList(e) {
+    e.preventDefault();
+    if (departamentoInput === '') return toast.warning("Digite o departamento!");
+    setListaDepartamentos([...listaDepartamentos, departamentoInput]);
+    setDepartamentoInput('');
+  }
+
+  async function handleSaveAll() {
+    if (secretaria === '' || listaDepartamentos.length === 0) return toast.warning("Preencha os campos!");
     try {
-      const docRef = doc(db, 'setores', id);
-      await deleteDoc(docRef);
-      setSetores(setores.filter(item => item.id !== id));
-      toast.success("Item removido!");
-    } catch (error) {
-      toast.error("Erro ao excluir.");
-    }
+      const promises = listaDepartamentos.map(dep => 
+        addDoc(collection(db, 'setores'), { secretaria: secretaria.trim(), departamento: dep.trim() })
+      );
+      await Promise.all(promises);
+      toast.success("Cadastrado!");
+      setSecretaria('');
+      setListaDepartamentos([]);
+      loadSetores();
+    } catch (error) { toast.error("Erro ao salvar."); }
   }
 
-  // Agrupa os dados para a listagem organizada
+  // --- FUNÇÕES DE EDIÇÃO E EXCLUSÃO ---
+
+  async function handleDeleteDep(id) {
+    try {
+      await deleteDoc(doc(db, 'setores', id));
+      setSetores(setores.filter(item => item.id !== id));
+      toast.success("Departamento excluído!");
+    } catch (error) { toast.error("Erro ao excluir."); }
+  }
+
+  async function handleDeleteSec(nomeSec) {
+    if(!window.confirm(`Excluir a secretaria "${nomeSec}" e TODOS os seus departamentos?`)) return;
+    try {
+      const batch = writeBatch(db);
+      const itensParaDeletar = setores.filter(s => s.secretaria === nomeSec);
+      itensParaDeletar.forEach(item => batch.delete(doc(db, 'setores', item.id)));
+      await batch.commit();
+      toast.success("Secretaria removida!");
+      loadSetores();
+    } catch (error) { toast.error("Erro ao excluir secretaria."); }
+  }
+
+  async function handleUpdateDep(id) {
+    if(novoNomeDep === '') return setEditandoId(null);
+    try {
+      await updateDoc(doc(db, 'setores', id), { departamento: novoNomeDep });
+      toast.success("Departamento atualizado!");
+      setEditandoId(null);
+      loadSetores();
+    } catch (error) { toast.error("Erro ao atualizar."); }
+  }
+
+  async function handleUpdateSec(antigoNome) {
+    if(novoNomeSec === '' || novoNomeSec === antigoNome) return setEditandoSec(null);
+    try {
+      const batch = writeBatch(db);
+      const itensParaAtualizar = setores.filter(s => s.secretaria === antigoNome);
+      itensParaAtualizar.forEach(item => batch.update(doc(db, 'setores', item.id), { secretaria: novoNomeSec }));
+      await batch.commit();
+      toast.success("Nome da secretaria atualizado!");
+      setEditandoSec(null);
+      loadSetores();
+    } catch (error) { toast.error("Erro ao atualizar secretaria."); }
+  }
+
   const setoresAgrupados = setores.reduce((acc, item) => {
-    if (!acc[item.secretaria]) {
-      acc[item.secretaria] = [];
-    }
+    if (!acc[item.secretaria]) acc[item.secretaria] = [];
     acc[item.secretaria].push(item);
     return acc;
   }, {});
@@ -102,114 +115,92 @@ export default function Settings() {
     <div>
       <Header />
       <div className="content">
-        <Title name="Configurações de Setores">
-          <FiSettings size={25} />
-        </Title>
+        <Title name="Configurações de Setores"><FiSettings size={25} /></Title>
 
+        {/* Formulário de Cadastro permanece similar */}
         <div className="container">
           <div className="form-profile">
-            <h2 style={{ marginBottom: '15px', fontSize: '1.2em' }}>Cadastrar Nova Unidade</h2>
-            
-            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Nome da Secretaria ou Autarquia</label>
-            <input 
-              type="text" 
-              value={secretaria} 
-              onChange={(e) => setSecretaria(e.target.value)} 
-              placeholder="Ex: Secretaria de Educação ou Autarquia de Saneamento" 
-            />
-
-            <div style={{ marginTop: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Departamentos vinculados</label>
+            <label>Nova Unidade (Secretaria/Autarquia)</label>
+            <input type="text" value={secretaria} onChange={(e) => setSecretaria(e.target.value)} />
+            <div style={{ marginTop: '15px' }}>
+                <label>Adicionar Departamentos</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                    <input 
-                      type="text" 
-                      value={departamentoInput} 
-                      onChange={(e) => setDepartamentoInput(e.target.value)} 
-                      placeholder="Adicionar departamento (ex: Protocolo)" 
-                      style={{ flex: 1, marginBottom: 0 }}
-                    />
-                    <button onClick={handleAddToList} style={{ width: '50px', height: '43px', backgroundColor: '#181c2e', border: 0, borderRadius: '4px', cursor: 'pointer' }}>
-                        <FiPlus size={20} color="#FFF" />
-                    </button>
+                    <input type="text" value={departamentoInput} onChange={(e) => setDepartamentoInput(e.target.value)} style={{ flex: 1, marginBottom: 0 }} />
+                    <button onClick={handleAddToList} style={{ width: '50px', height: '43px', backgroundColor: '#181c2e' }}><FiPlus size={20} color="#FFF" /></button>
                 </div>
             </div>
-
-            {/* Pré-visualização antes de salvar */}
             {listaDepartamentos.length > 0 && (
-                <div style={{ marginTop: '15px', padding: '15px', background: '#f0f4f8', borderRadius: '5px', border: '1px solid #d1d9e0' }}>
-                    <p style={{ marginBottom: '10px' }}><strong>Itens a serem criados para "{secretaria}":</strong></p>
-                    <ul style={{ listStyle: 'none' }}>
-                        {listaDepartamentos.map((dep, index) => (
-                            <li key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e1e4e8' }}>
-                                <span>• {dep}</span>
-                                <button onClick={() => handleRemoveFromList(index)} style={{ color: '#ff4444', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Remover</button>
-                            </li>
-                        ))}
-                    </ul>
+                <div style={{ marginTop: '15px', padding: '10px', background: '#EEE', borderRadius: '5px' }}>
+                    {listaDepartamentos.map((dep, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px' }}>
+                            <span>{dep}</span>
+                            <button onClick={() => setListaDepartamentos(listaDepartamentos.filter((_, idx) => idx !== i))} style={{ color: 'red', border: 0, background: 'none' }}>Remover</button>
+                        </div>
+                    ))}
                 </div>
             )}
-
-            <button onClick={handleSaveAll} style={{ marginTop: '25px', backgroundColor: '#1fcc44', fontWeight: 'bold' }}>
-                Confirmar Cadastro da Unidade
-            </button>
+            <button onClick={handleSaveAll} style={{ marginTop: '20px', backgroundColor: '#1fcc44' }}>Cadastrar Unidade</button>
           </div>
         </div>
 
-        <hr style={{ margin: '40px 0', border: '0', borderTop: '1px solid #ddd' }} />
-
-        {/* Listagem com Quebra de Linha e Separação por Blocos */}
+        {/* LISTAGEM COM OPÇÕES DE ALTERAR/DELETAR */}
         <div className="container">
-          <Title name="Unidades e Departamentos Cadastrados">
-            <FiList size={22} />
-          </Title>
-
-          {loading ? (
-            <span>Carregando lista...</span>
-          ) : Object.keys(setoresAgrupados).length === 0 ? (
-            <span>Nenhum registro encontrado.</span>
-          ) : (
-            Object.keys(setoresAgrupados).map((nomeSec) => (
-              <div key={nomeSec} style={{ 
-                marginBottom: '40px', // Espaçamento (quebra de linha) entre secretarias
-                background: '#FFF', 
-                padding: '20px', 
-                borderRadius: '8px', 
-                border: '1px solid #eee',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.05)' 
-              }}>
-                <h3 style={{ 
-                    color: '#181c2e', 
-                    paddingBottom: '10px', 
-                    borderBottom: '2px solid #181c2e', 
-                    marginBottom: '15px',
-                    fontSize: '1.3em'
-                }}>
-                    {nomeSec}
-                </h3>
-                
-                <table style={{ margin: 0 }}>
-                  <thead>
-                    <tr>
-                      <th scope="col">Departamento</th>
-                      <th scope="col" style={{ width: '80px' }}>Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {setoresAgrupados[nomeSec].map((item) => (
-                      <tr key={item.id}>
-                        <td data-label="Departamento">{item.departamento}</td>
-                        <td data-label="Ações">
-                          <button className="action" style={{ backgroundColor: '#FD441B' }} onClick={() => handleDelete(item.id)}>
-                            <FiTrash2 size={15} color="#FFF" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <Title name="Lista de Unidades"><FiList size={22} /></Title>
+          {loading ? <span>Carregando...</span> : Object.keys(setoresAgrupados).map((nomeSec) => (
+            <div key={nomeSec} style={{ marginBottom: '30px', background: '#FFF', padding: '20px', borderRadius: '8px', border: '1px solid #eee' }}>
+              
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '2px solid #181c2e', paddingBottom: '10px', marginBottom: '15px' }}>
+                {editandoSec === nomeSec ? (
+                  <div style={{ display: 'flex', gap: '10px', flex: 1 }}>
+                    <input type="text" value={novoNomeSec} onChange={(e) => setNovoNomeSec(e.target.value)} style={{ marginBottom: 0 }} />
+                    <button onClick={() => handleUpdateSec(nomeSec)} style={{ background: 'green', border: 0, padding: '5px', borderRadius: '4px' }}><FiCheck color="#FFF" /></button>
+                    <button onClick={() => setEditandoSec(null)} style={{ background: 'gray', border: 0, padding: '5px', borderRadius: '4px' }}><FiX color="#FFF" /></button>
+                  </div>
+                ) : (
+                  <>
+                    <h3 style={{ margin: 0 }}>{nomeSec}</h3>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button onClick={() => { setEditandoSec(nomeSec); setNovoNomeSec(nomeSec); }} style={{ background: 'none', border: 0, cursor: 'pointer' }}><FiEdit2 size={18} color="#181c2e" /></button>
+                      <button onClick={() => handleDeleteSec(nomeSec)} style={{ background: 'none', border: 0, cursor: 'pointer' }}><FiTrash2 size={18} color="#FD441B" /></button>
+                    </div>
+                  </>
+                )}
               </div>
-            ))
-          )}
+              
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Departamento</th>
+                    <th scope="col" style={{ width: '100px' }}>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {setoresAgrupados[nomeSec].map((item) => (
+                    <tr key={item.id}>
+                      <td data-label="Departamento">
+                        {editandoId === item.id ? (
+                          <input type="text" value={novoNomeDep} onChange={(e) => setNovoNomeDep(e.target.value)} style={{ marginBottom: 0, padding: '5px' }} />
+                        ) : item.departamento}
+                      </td>
+                      <td data-label="Ações">
+                        {editandoId === item.id ? (
+                          <div style={{ display: 'flex', gap: '5px' }}>
+                            <button onClick={() => handleUpdateDep(item.id)} className="action" style={{ backgroundColor: '#1fcc44' }}><FiCheck size={15} color="#FFF" /></button>
+                            <button onClick={() => setEditandoId(null)} className="action" style={{ backgroundColor: '#CCC' }}><FiX size={15} color="#FFF" /></button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '5px' }}>
+                            <button onClick={() => { setEditandoId(item.id); setNovoNomeDep(item.departamento); }} className="action" style={{ backgroundColor: '#F6A935' }}><FiEdit2 size={15} color="#FFF" /></button>
+                            <button onClick={() => handleDeleteDep(item.id)} className="action" style={{ backgroundColor: '#FD441B' }}><FiTrash2 size={15} color="#FFF" /></button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
         </div>
       </div>
     </div>
