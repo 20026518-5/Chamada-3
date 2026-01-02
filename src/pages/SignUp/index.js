@@ -1,78 +1,123 @@
-import { useContext, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useContext, useEffect } from 'react';
 import logo from '../../assets/logo.png';
+import { Link } from 'react-router-dom';
 import { AuthContext } from '../../contexts/auth';
-import { FaSpinner } from "react-icons/fa";
-import { toast } from 'react-toastify'; // Importação que faltava
+import { db } from '../../services/firebaseConnection'; // Importação da conexão com banco
+import { collection, getDocs } from 'firebase/firestore'; // Importação do Firestore
 
-function SignUp() {
+export default function SignUp() {
+  const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [secretaria, setSecretaria] = useState(''); // Novo campo
-  const [departamento, setDepartamento] = useState(''); // Novo campo
+  const [senha, setSenha] = useState('');
+  const [secretaria, setSecretaria] = useState('');
+  const [departamento, setDepartamento] = useState('');
+  const [listaSetores, setListaSetores] = useState([]); // Estado para armazenar os setores do banco
 
-  const { signUp, loadingAuth } = useContext(AuthContext);
-  
-  function handleSignUp(e) {
+  const { signUp, loadingAuth } = useContext(AuthContext); //
+
+  // Busca as secretarias e departamentos cadastrados pelo Admin no Firestore
+  useEffect(() => {
+    async function getSetores() {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'setores'));
+        let lista = [];
+        querySnapshot.forEach(doc => {
+          lista.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        setListaSetores(lista);
+      } catch (error) {
+        console.log("Erro ao buscar setores: ", error);
+      }
+    }
+
+    getSetores();
+  }, []);
+
+  async function handleSubmit(e) {
     e.preventDefault();
-    // Verificando se todos os campos estão preenchidos
-    if(name !== '' && email !== '' && password !== '' && secretaria !== '' && departamento !== ''){
-       signUp(name, email, password, secretaria, departamento);
+
+    if (nome !== '' && email !== '' && senha !== '' && secretaria !== '' && departamento !== '') {
+      await signUp(nome, email, senha, secretaria, departamento);
     } else {
-       toast.error("Preencha todos os campos, incluindo Secretaria e Departamento!");
+      alert("Preencha todos os campos para continuar.");
     }
   }
+
+  // Gera uma lista de secretarias únicas para o primeiro Select
+  const secretariasUnicas = [...new Set(listaSetores.map(s => s.secretaria))];
 
   return (
     <div className="container-center">
       <div className="login">
         <div className="login-area">
-          <img src={logo} alt='logo signUp'/>
+          <img src={logo} alt="Logo do sistema de chamados" />
         </div>
 
-        <form className='form' onSubmit={handleSignUp}>
-          <h1>Nova Conta</h1>
+        <form onSubmit={handleSubmit}>
+          <h1>Nova conta</h1>
           <input 
             type="text" 
-            value={name} 
-            onChange={(e) => setName(e.target.value)} 
-            placeholder='Nome' 
-          />
-          <input 
-            type="text" 
-            value={email} 
-            onChange={(e) => setEmail(e.target.value)} 
-            placeholder='E-mail'
-          />
-          <input 
-            type="password" 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-            placeholder='Senha' 
-          />
-          {/* Novos Inputs */}
-          <input 
-            type="text" 
-            value={secretaria} 
-            onChange={(e) => setSecretaria(e.target.value)} 
-            placeholder='Sua Secretaria' 
-          />
-          <input 
-            type="text" 
-            value={departamento} 
-            onChange={(e) => setDepartamento(e.target.value)} 
-            placeholder='Seu Departamento' 
+            placeholder="Seu nome" 
+            value={nome}
+            onChange={ (e) => setNome(e.target.value) }
           />
 
-          <button type="submit" disabled={loadingAuth}>
-            {loadingAuth ? <FaSpinner className="loading-spinner" /> : "Cadastrar"}
+          <input 
+            type="text" 
+            placeholder="email@email.com" 
+            value={email}
+            onChange={ (e) => setEmail(e.target.value) }
+          />
+
+          <input 
+            type="password" 
+            placeholder="Sua senha" 
+            value={senha}
+            onChange={ (e) => setSenha(e.target.value) }
+          />
+
+          {/* Select de Secretaria - Apenas o que o Admin cadastrou */}
+          <label style={{ alignSelf: 'flex-start', marginBottom: 5 }}>Secretaria:</label>
+          <select 
+            value={secretaria} 
+            onChange={(e) => {
+              setSecretaria(e.target.value);
+              setDepartamento(''); // Limpa o departamento caso troque a secretaria
+            }}
+          >
+            <option value="">Selecione uma secretaria</option>
+            {secretariasUnicas.map(sec => (
+              <option key={sec} value={sec}>{sec}</option>
+            ))}
+          </select>
+
+          {/* Select de Departamento - Filtra baseado na Secretaria escolhida */}
+          <label style={{ alignSelf: 'flex-start', marginBottom: 5, marginTop: 10 }}>Departamento:</label>
+          <select 
+            value={departamento} 
+            onChange={(e) => setDepartamento(e.target.value)}
+            disabled={!secretaria} // Só habilita após escolher a secretaria
+          >
+            <option value="">Selecione o departamento</option>
+            {listaSetores
+              .filter(s => s.secretaria === secretaria)
+              .map(item => (
+                <option key={item.id} value={item.departamento}>{item.departamento}</option>
+              ))
+            }
+          </select>
+
+          <button type="submit">
+            {loadingAuth ? 'Cadastrando...' : 'Cadastrar'}
           </button>
         </form>
-        <Link to='/'>Já possuo conta!</Link>
+
+        <Link to="/">Já possui uma conta? Faça login</Link>
+
       </div>
     </div>
   );
 }
-
-export default SignUp;
