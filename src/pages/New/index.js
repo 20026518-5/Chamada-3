@@ -134,15 +134,19 @@ const handleRegister = async (e) => {
               <option value='financeiro'>Financeiro</option>
             </select>
 
-            <label>Status</label>
-            <div className="status">
-              <input type='radio' name='status' value='Em aberto' checked={status === 'Em aberto'} onChange={(e) => setStatus(e.target.value)} />
-              <span>Em Aberto</span>
-              <input type='radio' name='status' value='atendido' checked={status === 'atendido'} onChange={(e) => setStatus(e.target.value)} />
-              <span>Atendido</span>
-              <input type='radio' name='status' value='Em progresso' checked={status === 'Em progresso'} onChange={(e) => setStatus(e.target.value)} />
-              <span>Em progresso</span>
-            </div>
+{user.isadm && (
+  <>
+    <label>Status</label>
+    <div className="status">
+      <input type='radio' name='status' value='Em aberto' checked={status === 'Em aberto'} onChange={(e) => setStatus(e.target.value)} />
+      <span>Em Aberto</span>
+      <input type='radio' name='status' value='atendido' checked={status === 'atendido'} onChange={(e) => setStatus(e.target.value)} />
+      <span>Atendido</span>
+      <input type='radio' name='status' value='Em progresso' checked={status === 'Em progresso'} onChange={(e) => setStatus(e.target.value)} />
+      <span>Em progresso</span>
+    </div>
+  </>
+)}
 
             <label>Complemento</label>
             <textarea placeholder="Descreva seu problema" onChange={(e) => setComplemento(e.target.value)} value={complemento} />
