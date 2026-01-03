@@ -4,9 +4,9 @@ import SignIn from '../pages/SignIn';
 import SignUp from '../pages/SignUp';
 import Dashboard from '../pages/Dashboard';
 import Profile from '../pages/Profile';
-import Customers from '../pages/Customers';
+import Customers from '../pages/Customers'; // Este é o componente que agora é "Servidores"
 import New from '../pages/New';
-import Settings from '../pages/Settings'; // IMPORTAÇÃO QUE ESTAVA FALTANDO
+import Settings from '../pages/Settings'; 
 
 import Private from './private';
 
@@ -18,11 +18,13 @@ function RoutesApp(){
 
       <Route path="/dashboard" element={ <Private><Dashboard/></Private> } />
       <Route path="/profile" element={ <Private><Profile/></Private> } />
+      
+      {/* Alterado de /customers para /servidores conforme solicitado */}
       <Route path="/servidores" element={ <Private><Customers/></Private> } />
+      
       <Route path="/new" element={ <Private><New/></Private> } />
       <Route path="/new/:id" element={ <Private><New/></Private> } />
       
-      {/* Nova rota para configurações de setores */}
       <Route path="/settings" element={ <Private><Settings/></Private> } />
     </Routes>
   )
