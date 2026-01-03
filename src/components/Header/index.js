@@ -29,6 +29,19 @@ export default function Header() {
         Perfil
       </Link>
 
+// Dentro do return do seu Header:
+<Link to="/servidores">
+  <FiUsers color="#FFF" size={24} />
+  Servidores
+</Link>
+
+{user.isadm && (
+  <Link to="/settings">
+    <FiSettings color="#FFF" size={24} />
+    Configurações
+  </Link>
+)}
+
       {/* Aba de Setores visível apenas para Admin */}
       {user.isadm && (
         <Link to='/settings'>
